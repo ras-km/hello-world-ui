@@ -45,21 +45,21 @@ jobs:
         run: |
           docker push $IMAGE_NAME:${TAG}
 
-                - name: Update Helm Chart Repository
-        env:
-          HELM_TOKEN: ${{ secrets.HELM_REPO_TOKEN }}
-          TAG: ${{ env.TAG }}
-        run: |
-          git clone https://x-access-token:${HELM_TOKEN}@github.com/ras-km/hello-world-helm.git
-          cd hello-world-helm/hello-world
+        #         - name: Update Helm Chart Repository
+        # env:
+        #   HELM_TOKEN: ${{ secrets.HELM_REPO_TOKEN }}
+        #   TAG: ${{ env.TAG }}
+        # run: |
+        #   git clone https://x-access-token:${HELM_TOKEN}@github.com/ras-km/hello-world-helm.git
+        #   cd hello-world-helm/hello-world
 
-          sed -i "s/tag:.*/tag: \"${TAG}\"/" values.yaml
+        #   sed -i "s/tag:.*/tag: \"${TAG}\"/" values.yaml
 
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+        #   git config user.name "github-actions"
+        #   git config user.email "actions@github.com"
 
-          git add values.yaml
-          git commit -m "Update image tag to ${TAG}"
+        #   git add values.yaml
+        #   git commit -m "Update image tag to ${TAG}"
 
-          git push
+        #   git push
 
