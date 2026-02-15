@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Image with Security Scanning
 
 on:
   push:
@@ -9,12 +9,23 @@ on:
       - 'Dockerfile'
 
 jobs:
-  build-and-push:
+  security-scan-and-build:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      # Step 1: Code vulnerability scan
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'  # Fail if HIGH or CRITICAL vulnerabilities found
+          severity: 'HIGH,CRITICAL'
+        continue-on-error: false
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -29,9 +40,44 @@ jobs:
         id: tag
         run: echo "TAG=$(date +%s)" >> $GITHUB_OUTPUT
       
-      - name: Build and push
+      # Step 2: Build image
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          load: true
+          tags: rkdockerhub420/hello-world-ui:${{ steps.tag.outputs.TAG }}
+      
+      # Step 3: Image vulnerability scan
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'rkdockerhub420/hello-world-ui:${{ steps.tag.outputs.TAG }}'
+          format: 'table'
+          exit-code: '1'  # Fail if HIGH or CRITICAL vulnerabilities found
+          severity: 'HIGH,CRITICAL'
+        continue-on-error: false
+      
+      # Step 4: Push image (only if scans pass)
+      - name: Push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: rkdockerhub420/hello-world-ui:${{ steps.tag.outputs.TAG }}
+      
+      # Step 5: Notify on success
+      - name: Success notification
+        if: success()
+        run: |
+          echo "✅ All security scans passed!"
+          echo "✅ Image pushed: rkdockerhub420/hello-world-ui:${{ steps.tag.outputs.TAG }}"
+      
+      # Step 6: Notify on failure
+      - name: Failure notification
+        if: failure()
+        run: |
+          echo "❌ Security vulnerabilities found or build failed!"
+          echo "❌ Pipeline halted. Check the logs above for details."
+          exit 1
